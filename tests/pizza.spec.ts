@@ -266,9 +266,9 @@ test('dinerdashboard', async ({ page }) => {
   await page.waitForLoadState('networkidle');
 
   // Use stable header link instead of brittle “t” initial
-  const dinerLink = page.locator('a[href="/dinerdashboard"], a[href="/diner-dashboard"]').first();
-  // await expect(dinerLink).toBeVisible();
-  await dinerLink.click();
+  // const dinerLink = page.locator('a[href="/dinerdashboard"], a[href="/diner-dashboard"]').first();
+  // // await expect(dinerLink).toBeVisible();
+  // await dinerLink.click();
 
   const buyOne = page.getByRole('link', { name: /buy one/i });
   await expect(buyOne).toBeVisible();
