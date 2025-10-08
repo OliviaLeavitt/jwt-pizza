@@ -2,6 +2,9 @@ import { Page } from '@playwright/test';
 import { test, expect } from 'playwright-test-coverage';
 import { User, Role } from '../src/service/pizzaService';
 
+// Give headless CI some breathing room across this file
+test.setTimeout(15000);
+
 async function loginAsAdmin(page: Page) {
   let currentUser: any = null;
 
@@ -177,6 +180,14 @@ test('purchase with login', async ({ page }) => {
 
 test('register a new user', async ({ page }) => {
   let currentUser: any = null;
+
+  // Keep layout happy (header fetches menu)
+  await page.route('**/api/order/menu', async (r) =>
+    r.fulfill({
+      json: [{ id: 1, title: 'Veggie', image: 'pizza1.png', price: 0.0038, description: 'A garden of delight' }],
+    })
+  );
+
   await page.route('**/api/user/me', async (route) => route.fulfill({ json: currentUser }));
   await page.route(/\/api\/(auth\/)?register$/, async (route) => {
     const payload = route.request().postDataJSON?.() || {};
@@ -188,6 +199,7 @@ test('register a new user', async ({ page }) => {
 
   await page.goto('/');
   await page.getByRole('link', { name: /register/i }).click();
+
   await expect(page.getByRole('textbox', { name: /full name/i })).toBeVisible();
   await expect(page.getByRole('textbox', { name: /email address/i })).toBeVisible();
   const passwordInput = page.getByRole('textbox', { name: /password/i });
@@ -198,8 +210,16 @@ test('register a new user', async ({ page }) => {
   await page.getByRole('textbox', { name: /email address/i }).fill('test@jwt.com');
   await passwordInput.fill('test');
   await page.getByRole('button', { name: /register/i }).click();
+
+  // Let SPA settle (header re-render, /me fetch, etc.)
+  await page.waitForLoadState('networkidle');
+
+  // Open the user menu via initials, then assert Logout visible
+  const initials = page.getByRole('link', { name: /^t$/i });
+  await expect(initials).toBeVisible();
+  await initials.click();
   await expect(page.getByRole('link', { name: /logout/i })).toBeVisible();
-  await page.reload();
+  // Reload not required anymore
 });
 
 test('logout redirects home and clears user state', async ({ page }) => {
@@ -248,14 +268,16 @@ test('dinerdashboard', async ({ page }) => {
   await page.getByRole('textbox', { name: /password/i }).fill('test');
   await page.getByRole('button', { name: /register/i }).click();
 
-  const initials = page.getByRole('link', { name: 't', exact: true });
-  await expect(initials).toBeVisible();
+  // Give the header time to show initials
+  await page.waitForLoadState('networkidle');
+
+  const initials = page.getByRole('link', { name: /^t$/i });
+  await expect(initials).toBeVisible({ timeout: 15000 });
   await initials.click();
   const buyOne = page.getByRole('link', { name: /buy one/i });
   await expect(buyOne).toBeVisible();
   await expect(buyOne).toHaveAttribute('href', '/menu');
 });
-
 
 test.describe('Admin Dashboard', () => {
   test.setTimeout(15000);
@@ -294,7 +316,6 @@ test.describe('Admin Dashboard', () => {
     await expect(prevBtn).toBeDisabled();
   });
 });
-
 
 test('admin page (non-admin sees NotFound)', async ({ page }) => {
   await page.route('**/api/user/me', async (r) =>
@@ -402,7 +423,6 @@ test.describe('CloseFranchise', () => {
     expect(url).toMatch(/\/api\/franchise\/1(\b|\/close\b)/);
   });
 });
-
 
 test('About: renders title, hero image, and main copy', async ({ page }) => {
   await page.route('**/api/order/menu', async (r) =>
