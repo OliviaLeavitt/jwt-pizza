@@ -14,5 +14,4 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 .nyc_output
-.nycrc.json
 vite.config.js
