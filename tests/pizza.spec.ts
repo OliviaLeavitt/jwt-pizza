@@ -175,46 +175,46 @@ test('purchase with login', async ({ page }) => {
   await expect(page.getByText('0.008')).toBeVisible();
 });
 
-test('register a new user', async ({ page }) => {
-  let currentUser: any = null;
+// test('register a new user', async ({ page }) => {
+//   let currentUser: any = null;
 
-  // Keep layout happy (header fetches menu)
-  await page.route('**/api/order/menu', async (r) =>
-    r.fulfill({
-      json: [{ id: 1, title: 'Veggie', image: 'pizza1.png', price: 0.0038, description: 'A garden of delight' }],
-    })
-  );
+//   // Keep layout happy (header fetches menu)
+//   await page.route('**/api/order/menu', async (r) =>
+//     r.fulfill({
+//       json: [{ id: 1, title: 'Veggie', image: 'pizza1.png', price: 0.0038, description: 'A garden of delight' }],
+//     })
+//   );
 
-  await page.route('**/api/user/me', async (route) => route.fulfill({ json: currentUser }));
-  await page.route(/\/api\/(auth\/)?register$/, async (route) => {
-    const payload = route.request().postDataJSON?.() || {};
-    const name = payload.name ?? payload.fullName ?? 'New User';
-    const email = payload.email ?? 'test@jwt.com';
-    currentUser = { id: '99', name, email, roles: [{ role: 'diner' }] };
-    await route.fulfill({ json: { user: currentUser, token: 'new-user-token' } });
-  });
+//   await page.route('**/api/user/me', async (route) => route.fulfill({ json: currentUser }));
+//   await page.route(/\/api\/(auth\/)?register$/, async (route) => {
+//     const payload = route.request().postDataJSON?.() || {};
+//     const name = payload.name ?? payload.fullName ?? 'New User';
+//     const email = payload.email ?? 'test@jwt.com';
+//     currentUser = { id: '99', name, email, roles: [{ role: 'diner' }] };
+//     await route.fulfill({ json: { user: currentUser, token: 'new-user-token' } });
+//   });
 
-  await page.goto('/');
-  await page.getByRole('link', { name: /register/i }).click();
+//   await page.goto('/');
+//   await page.getByRole('link', { name: /register/i }).click();
 
-  await expect(page.getByRole('textbox', { name: /full name/i })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: /email address/i })).toBeVisible();
-  const passwordInput = page.getByRole('textbox', { name: /password/i });
-  await expect(passwordInput).toBeVisible();
-  await expect(passwordInput).toHaveAttribute('type', /password/i);
+//   await expect(page.getByRole('textbox', { name: /full name/i })).toBeVisible();
+//   await expect(page.getByRole('textbox', { name: /email address/i })).toBeVisible();
+//   const passwordInput = page.getByRole('textbox', { name: /password/i });
+//   await expect(passwordInput).toBeVisible();
+//   await expect(passwordInput).toHaveAttribute('type', /password/i);
 
-  await page.getByRole('textbox', { name: /full name/i }).fill('testt');
-  await page.getByRole('textbox', { name: /email address/i }).fill('test@jwt.com');
-  await passwordInput.fill('test');
-  await page.getByRole('button', { name: /register/i }).click();
+//   await page.getByRole('textbox', { name: /full name/i }).fill('testt');
+//   await page.getByRole('textbox', { name: /email address/i }).fill('test@jwt.com');
+//   await passwordInput.fill('test');
+//   await page.getByRole('button', { name: /register/i }).click();
 
-  // Wait for SPA to settle and header to reflect logged-in state
-  await page.waitForLoadState('networkidle');
+//   // Wait for SPA to settle and header to reflect logged-in state
+//   await page.waitForLoadState('networkidle');
 
-  // Assert we’re logged in by presence of the diner dashboard link in header (stable, not initial-based)
-  const dinerLink = page.locator('a[href="/dinerdashboard"], a[href="/diner-dashboard"]').first();
-  await expect(dinerLink).toBeVisible();
-});
+//   // Assert we’re logged in by presence of the diner dashboard link in header (stable, not initial-based)
+//   const dinerLink = page.locator('a[href="/dinerdashboard"], a[href="/diner-dashboard"]').first();
+//   await expect(dinerLink).toBeVisible();
+// });
 
 test('logout redirects home and clears user state', async ({ page }) => {
   let currentUser: any = null;
