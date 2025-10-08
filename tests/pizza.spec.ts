@@ -546,7 +546,3 @@ test('History: hero image has expected sizing and float class', async ({ page })
 test('go to docs', async ({ page }) => {
   await goto(page, '/docs');
 })
-
-test('go to docs', async ({ page }) => {
-  await goto(page, '/docs');
-})
