@@ -541,3 +541,8 @@ test('History: hero image has expected sizing and float class', async ({ page })
   await expect(hero).toHaveAttribute('class', /float-right/);
   await expect(hero).toHaveAttribute('class', /m-4/);
 });
+
+
+test('go to docs', async ({ page }) => {
+  await goto(page, '/docs');
+})
