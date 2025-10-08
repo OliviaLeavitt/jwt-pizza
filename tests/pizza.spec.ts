@@ -2,9 +2,6 @@ import { Page } from '@playwright/test';
 import { test, expect } from 'playwright-test-coverage';
 import { User, Role } from '../src/service/pizzaService';
 
-// Give headless CI some breathing room across this file
-test.setTimeout(15000);
-
 async function loginAsAdmin(page: Page) {
   let currentUser: any = null;
 
@@ -211,15 +208,12 @@ test('register a new user', async ({ page }) => {
   await passwordInput.fill('test');
   await page.getByRole('button', { name: /register/i }).click();
 
-  // Let SPA settle (header re-render, /me fetch, etc.)
+  // Wait for SPA to settle and header to reflect logged-in state
   await page.waitForLoadState('networkidle');
 
-  // Open the user menu via initials, then assert Logout visible
-  const initials = page.getByRole('link', { name: /^t$/i });
-  await expect(initials).toBeVisible();
-  await initials.click();
-  await expect(page.getByRole('link', { name: /logout/i })).toBeVisible();
-  // Reload not required anymore
+  // Assert we’re logged in by presence of the diner dashboard link in header (stable, not initial-based)
+  const dinerLink = page.locator('a[href="/dinerdashboard"], a[href="/diner-dashboard"]').first();
+  await expect(dinerLink).toBeVisible();
 });
 
 test('logout redirects home and clears user state', async ({ page }) => {
@@ -268,20 +262,20 @@ test('dinerdashboard', async ({ page }) => {
   await page.getByRole('textbox', { name: /password/i }).fill('test');
   await page.getByRole('button', { name: /register/i }).click();
 
-  // Give the header time to show initials
+  // Let header reflect logged-in state
   await page.waitForLoadState('networkidle');
 
-  const initials = page.getByRole('link', { name: /^t$/i });
-  await expect(initials).toBeVisible({ timeout: 15000 });
-  await initials.click();
+  // Use stable header link instead of brittle “t” initial
+  const dinerLink = page.locator('a[href="/dinerdashboard"], a[href="/diner-dashboard"]').first();
+  await expect(dinerLink).toBeVisible();
+  await dinerLink.click();
+
   const buyOne = page.getByRole('link', { name: /buy one/i });
   await expect(buyOne).toBeVisible();
   await expect(buyOne).toHaveAttribute('href', '/menu');
 });
 
 test.describe('Admin Dashboard', () => {
-  test.setTimeout(15000);
-
   test('close Store navigates to /close-store', async ({ page }) => {
     await loginAsAdmin(page);
     await routeFranchises(page);
