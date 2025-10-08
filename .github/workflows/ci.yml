@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
-
 jobs:
   build:
     name: Build
@@ -27,51 +27,25 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           printf '{"version": "%s" }' "$version" > public/version.json
 
-      - name: Install deps & build
+      - name: Build
         run: |
-          npm ci
-          npm run build
+          npm ci && npm run build
           cp dist/index.html dist/404.html
-
       - name: Update pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist/
 
-      # ---- TESTS + BADGE (robust) ----
-      - name: Run tests (generate coverage even if <80)
+      - name: Run tests
         run: |
           npx playwright install --with-deps chromium
-          # allow next steps to run even if this fails (coverage gate later)
-          npm run test:coverage || echo "Tests non-zero (likely <80%). Continuing."
+          npm run test:coverage
 
-      - name: Ensure jq and bc are available
-        if: always()
-        run: sudo apt-get update && sudo apt-get install -y jq bc
-
-      - name: Update coverage badge (always run)
-        if: always()
-        run: |
-          if [ ! -f coverage/coverage-summary.json ]; then
-            echo "coverage-summary.json missing; seeding 0"
-            coverage=0
-          else
-            coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json)
-          fi
-          color=$(echo "$coverage < 80" | bc | awk '{if ($1) print "red"; else print "green"}')
-          echo "NET_ID=${{ secrets.NET_ID }} coverage=$coverage color=$color"
-          curl --fail -v \
-            -H "authorization: bearer ${{ secrets.FACTORY_API_KEY }}" \
-            "https://pizza-factory.cs329.click/api/badge/${{ secrets.NET_ID }}/jwtpizzacoverage?label=Coverage&value=${coverage}%25&color=${color}"
-
-      - name: Enforce 80% coverage gate
+      - name: Update coverage
         run: |
           coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json)
-          echo "Lines coverage = $coverage"
-          pass=$(echo "$coverage >= 80" | bc)
-          if [ "$pass" -ne 1 ]; then
-            echo "Coverage below 80%"; exit 1
-          fi
+          color=$(echo "$coverage < 80" | bc | awk '{if ($1) print "red"; else print "green"}')
+          curl -s -X POST "https://pizza-factory.cs329.click/api/badge/${{ secrets.NET_ID }}/jwtpizzacoverage?label=Coverage&value=$coverage%25&color=$color" -H "authorization: bearer ${{ secrets.FACTORY_API_KEY }}"
   deploy:
     needs: build
     permissions:
