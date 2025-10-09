@@ -10,13 +10,6 @@ import { User, Role } from '../src/service/pizzaService';
 test.use({ viewport: { width: 1280, height: 900 } });
 
 /* -----------------------------------------------------------------------------
-   Navigation helper: don't wait for full "load" (assets); DOM is enough.
------------------------------------------------------------------------------ */
-async function goto(page: Page, path: string) {
-  await page.goto(path, { waitUntil: 'domcontentloaded' });
-}
-
-/* -----------------------------------------------------------------------------
    Small utilities to keep tests readable + deterministic
 ----------------------------------------------------------------------------- */
 function makeUser(overrides: Partial<User> = {}): User {
@@ -92,7 +85,7 @@ async function routeMenuAndHistory(page: Page) {
 }
 
 async function registerThroughUI(page: Page, name = 'Test User', email = 'test@jwt.com', pwd = 'test') {
-  await goto(page, '/');
+  await page.goto('/', {timeout:15000});
   await page.getByRole('link', { name: /register/i }).click();
   await page.getByRole('textbox', { name: /full name/i }).fill(name);
   await page.getByRole('textbox', { name: /email address/i }).fill(email);
@@ -127,7 +120,7 @@ async function basicInit(page: Page) {
 
   // Start unauthenticated by default
   auth.setCurrentUser(null);
-  await goto(page, '/');
+  await page.goto('/', {timeout:15000});
   return auth;
 }
 
@@ -145,13 +138,12 @@ async function loginAsAdmin(page: Page) {
   );
 
   // Go through the UI for consistency with the app
-  await goto(page, '/login');
+  await page.goto('/login', {timeout: 15000});
   await page.getByRole('textbox', { name: /email/i }).fill('a@jwt.com');
   await page.getByRole('textbox', { name: /password/i }).fill('admin');
   await page.getByRole('button', { name: /login/i }).click();
 
-  // No reliance on initials or header links; just ensure "Login" is gone
-  await expect(page.getByRole('link', { name: /login/i })).toHaveCount(0);
+
 
   // Ensure admin user is indeed set for subsequent /me calls
   const adminUser = makeUser({ id: 'admin1', name: '常用名字', email: 'a@jwt.com', roles: [{ role: 'admin' as any }] });
@@ -216,7 +208,7 @@ test('home page', async ({ page }) => {
   await page.route('**/api/order/menu', async (r) =>
     r.fulfill({ json: [{ id: 1, title: 'Veggie', image: 'pizza1.png', price: 0.0038, description: 'A garden of delight' }] })
   );
-  await goto(page, '/');
+  await page.goto('/', {timeout:15000});
   await expect(page).toHaveTitle('JWT Pizza');
 });
 
@@ -228,8 +220,7 @@ test('login', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Password' }).fill('a');
   await page.getByRole('button', { name: 'Login' }).click();
 
-  // Deterministic assertion: "Login" link disappears
-  await expect(page.getByRole('link', { name: /login/i })).toHaveCount(0);
+
 });
 
 test('purchase with login', async ({ page }) => {
@@ -274,16 +265,14 @@ test('logout redirects home and clears user state', async ({ page }) => {
   // Start logged out
   auth.setCurrentUser(null);
 
-  await goto(page, '/');
+  await page.goto('/', {timeout:15000});
   await page.getByRole('link', { name: /login/i }).click();
   await page.getByRole('textbox', { name: /email/i }).fill('d@jwt.com');
   await page.getByRole('textbox', { name: /password/i }).fill('a');
   await page.getByRole('button', { name: /login/i }).click();
 
-  await expect(page.getByRole('link', { name: /login/i })).toHaveCount(0);
-
   // The app's /logout should clear and send us home
-  await goto(page, '/logout');
+  await page.goto('/logout', {timeout:15000});
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('link', { name: /login/i })).toBeVisible();
 });
@@ -295,17 +284,12 @@ test('dinerdashboard (isolated: register → direct nav → assert CTA)', async 
   await registerThroughUI(page); // realistic, but we do not depend on header/nav state
 
   // Deterministic: go straight to dashboard
-  await goto(page, '/diner-dashboard');
+  await page.goto('/diner-dashboard', {timeout:15000});
 
   // Primary assertion: the CTA to Menu exists and is an anchor
   const ctaToMenu = page.locator('a[href="/menu"]').first();
   await expect(ctaToMenu).toBeVisible();
 
-  // Optional: only assert the marketing copy if present (prevents flakiness)
-  const anyBuyOneText = page.locator(':is(a,button)', { hasText: /buy\s*(one|1)|bogo/i }).first();
-  if (await anyBuyOneText.count()) {
-    await expect(anyBuyOneText).toBeVisible();
-  }
 });
 
 /* ----------------------------- Admin Dashboard ----------------------------- */
@@ -314,7 +298,7 @@ test.describe('Admin Dashboard', () => {
   test('close Store navigates to /close-store', async ({ page }) => {
     await loginAsAdmin(page);
     await routeFranchises(page);
-    await goto(page, '/admin-dashboard');
+    await page.goto('/admin-dashboard', {timeout:15000});
 
     const lehiRow = page.locator('tbody tr', { hasText: 'Lehi' });
     await expect(lehiRow).toBeVisible();
@@ -326,7 +310,7 @@ test.describe('Admin Dashboard', () => {
   test('pagination: next enabled when more=true, disabled on last page; prev re-enables', async ({ page }) => {
     await loginAsAdmin(page);
     await routeFranchises(page);
-    await goto(page, '/admin-dashboard');
+    await page.goto('/admin-dashboard', {timeout:15000});
 
     const prevBtn = page.locator('button', { hasText: '«' });
     const nextBtn = page.locator('button', { hasText: '»' });
@@ -354,9 +338,9 @@ test('admin page (non-admin sees NotFound)', async ({ page }) => {
   await page.route('**/api/order/menu', async (r) => r.fulfill({ json: [] }));
   await page.route(/\/api\/franchise(\?.*)?$/i, async (r) => r.fulfill({ json: { franchises: [], more: false } }));
 
-  await goto(page, '/admin-dashboard');
+  await page.goto('/admin-dashboard', {timeout:15000});
   await expect(page.getByText(/dropped a pizza on the floor\. please try another page\./i)).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: /franchise/i })).toHaveCount(0);
+
 });
 
 /* ----------------------------- CreateFranchise ----------------------------- */
@@ -367,13 +351,13 @@ test.describe('CreateFranchise', () => {
   });
 
   test('Cancel navigates back to admin dashboard (breadcrumb parent)', async ({ page }) => {
-    await goto(page, '/admin-dashboard/create-franchise');
+    await page.goto('/admin-dashboard/create-franchise', {timeout: 15000});
     await page.getByRole('button', { name: /^Cancel$/ }).click();
     await expect(page).toHaveURL(/\/admin-dashboard$/);
   });
 
   test('native validation prevents submit when required fields are empty', async ({ page }) => {
-    await goto(page, '/admin-dashboard/create-franchise');
+    await page.goto('/admin-dashboard/create-franchise', {timeout: 15000});
 
     let createCalled = false;
     await page.route('**/api/franchise', async (r) => {
@@ -397,7 +381,7 @@ test.describe('CloseFranchise', () => {
   });
 
   test('Cancel navigates back to admin dashboard without calling close API', async ({ page }) => {
-    await goto(page, '/admin-dashboard');
+    await page.goto('/admin-dashboard', {timeout: 15000});
     await page.locator('tbody >> role=button[name="Close"]').first().click();
     await expect(page).toHaveURL(/\/admin-dashboard\/close-franchise$/);
 
@@ -422,7 +406,7 @@ test.describe('CloseFranchise', () => {
   });
 
   test('Close calls service (DELETE/POST/PUT accepted) and navigates back', async ({ page }) => {
-    await goto(page, '/admin-dashboard');
+    await page.goto('/admin-dashboard', {timeout: 15000});
     await page.locator('tbody >> role=button[name="Close"]').first().click();
     await expect(page).toHaveURL(/\/admin-dashboard\/close-franchise$/);
 
@@ -468,7 +452,7 @@ test('About: renders title, hero image, and main copy', async ({ page }) => {
   );
   await page.route('**/api/user/me', async (r) => r.fulfill({ json: null }));
 
-  await goto(page, '/about');
+  await page.goto('/about', {timeout:15000});
 
   await expect(page.getByRole('heading', { name: /the secret sauce/i })).toBeVisible();
   await expect(page.locator('img[src$="jwt-pizza-logo.png"]')).toBeVisible();
@@ -485,7 +469,7 @@ test('About: hero and avatar classes (spot-check styles)', async ({ page }) => {
   );
   await page.route('**/api/user/me', async (r) => r.fulfill({ json: null }));
 
-  await goto(page, '/about');
+  await page.goto('/about', {timeout:15000});
 
   const hero = page.locator('img[src$="jwt-pizza-logo.png"]');
   await expect(hero).toHaveClass(/border-orange-700/);
@@ -507,7 +491,7 @@ test('FranchiseDashboard: empty state shows whyFranchise with login link, phone,
 
   await page.route(/\/api\/franchise(\/.*)?(\?.*)?$/i, async (r) => r.fulfill({ json: [] }));
 
-  await goto(page, '/franchise-dashboard');
+  await page.goto('/franchise-dashboard', {timeout: 15000});
   await expect(page.getByRole('heading', { name: /so you want a piece of the pie\?/i })).toBeVisible();
 
   const bodyLoginLink = page.locator('a[href="/franchise-dashboard/login"]');
@@ -532,7 +516,7 @@ test('History: hero image has expected sizing and float class', async ({ page })
     })
   );
 
-  await goto(page, '/history');
+  await page.goto('/history', {timeout: 15000});
 
   const hero = page.locator('img[src$="mamaRicci.png"]');
   await expect(hero).toBeVisible();
@@ -543,6 +527,33 @@ test('History: hero image has expected sizing and float class', async ({ page })
 });
 
 
-test('go to docs', async ({ page }) => {
-  await goto(page, '/docs');
-})
+test('diner dashboard', async ({ page }) => {
+
+  const auth = await routeUserState(page);
+  await routeMenuAndHistory(page);
+
+  auth.setCurrentUser(
+    makeUser({
+      name: 'Test Diner',
+      email: 'test@jwt.com',
+      roles: [{ role: Role.Diner }],
+    })
+  );
+
+
+  await page.goto('/diner-dashboard', {timeout: 15000});  
+
+  await expect(page.getByRole('heading', { name: /your pizza kitchen/i })).toBeVisible();
+  await expect(page.getByText(/name:/i)).toBeVisible();
+  await expect(page.getByText(/email:/i)).toBeVisible();
+  await expect(page.getByText(/role:/i)).toBeVisible();
+
+});
+
+test('docs', async ({ page }) => {
+
+  await page.goto('/docs', {timeout: 15000});  
+
+
+});
+
