@@ -551,9 +551,38 @@ test('diner dashboard', async ({ page }) => {
 });
 
 test('docs', async ({ page }) => {
-
   await page.goto('/docs', {timeout: 15000});  
+});
 
+test('Delivery shows details, verifies, then lets me order more', async ({ page }) => {
+  // Keep layout/header happy
+  await page.route('**/api/order/menu', async (r) =>
+    r.fulfill({
+      json: [{ id: 1, title: 'Veggie', image: 'pizza1.png', price: 0.0038, description: 'x' }],
+    })
+  );
+  // Anonymous (or logged-in is fine too)
+  await page.route('**/api/user/me', async (r) => r.fulfill({ json: null }));
 
+  // Verify endpoint (be permissive with the regex in case your path differs)
+  let verifyCalled = false;
+  await page.route(/\b\/api\/(order\/verify|verify-order|order\/.*\/verify)\b/i, async (r) => {
+    verifyCalled = true;
+    await r.fulfill({ status: 200, json: { ok: true } });
+  });
+
+  // Go to the Delivery page (SPA-safe)
+  await page.goto('/delivery', { timeout: 15000 });
+  await page.locator('main, #root, #app').first().waitFor({ state: 'attached' });
+
+  // Key content present
+  await expect(page.getByRole('heading', { name: /here is your jwt pizza!/i })).toBeVisible();
+  await expect(page.getByText(/order id:/i)).toBeVisible();
+  await expect(page.getByText(/pie count:/i)).toBeVisible();
+  await expect(page.getByText(/total:/i)).toBeVisible();
+
+  // Click Verify and confirm backend was hit
+  await page.getByRole('button', { name: /verify/i }).click();
+  expect(verifyCalled).toBe(true);
 });
 
