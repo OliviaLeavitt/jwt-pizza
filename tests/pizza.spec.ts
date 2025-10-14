@@ -40,6 +40,33 @@ async function routeUserState(page: Page) {
     await r.fulfill({ json: { user: currentUser, token: 'new-user-token' } });
   });
 
+  // PUT /api/user/:id  → update user and return { user, token }
+await page.route(/\b\/api\/user\/[^/]+$/i, async (r) => {
+  if (r.request().method() !== 'PUT') {
+    return r.fallback();
+  }
+
+  const body = r.request().postDataJSON?.() || {};
+  // Merge into currentUser; prefer body fields when provided
+  currentUser = {
+    ...(currentUser ?? makeUser()),
+    id: String(body.id ?? (currentUser?.id ?? 'u1')),
+    name: body.name ?? currentUser?.name ?? 'Test User',
+    email: body.email ?? currentUser?.email ?? 'test@jwt.com',
+    // password is optional; if blank, keep old; if provided, update
+    password: body.password || currentUser?.password || 'test',
+    roles: body.roles ?? currentUser?.roles ?? [{ role: Role.Diner }],
+  };
+
+  await r.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ user: currentUser, token: 'updated-token' }),
+  });
+});
+
+  
+
   // Simple email/password login route for tests that log in directly
   await page.route('**/api/auth', async (r) => {
     const body = r.request().postDataJSON?.() || {};
@@ -544,9 +571,13 @@ test('diner dashboard', async ({ page }) => {
   await page.goto('/diner-dashboard', {timeout: 15000});  
 
   await expect(page.getByRole('heading', { name: /your pizza kitchen/i })).toBeVisible();
-  await expect(page.getByText(/name:/i)).toBeVisible();
-  await expect(page.getByText(/email:/i)).toBeVisible();
-  await expect(page.getByText(/role:/i)).toBeVisible();
+const main = page.getByRole('main');
+
+// the modal also has "name:" etc., so grab the first match in main content
+await expect(main.getByText(/^name:$/i).first()).toBeVisible();
+await expect(main.getByText(/^email:$/i).first()).toBeVisible();
+await expect(main.getByText(/^role:$/i).first()).toBeVisible();
+
 
 });
 
