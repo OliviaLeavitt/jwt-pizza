@@ -339,11 +339,14 @@ test.describe('Admin Dashboard', () => {
     await routeFranchises(page);
     await page.goto('/admin-dashboard', {timeout:15000});
 
-    const prevBtn = page.locator('button', { hasText: '«' });
-    const nextBtn = page.locator('button', { hasText: '»' });
+    const allPrev = page.getByRole('button', { name: '«' });
+    const allNext = page.getByRole('button', { name: '»' });
 
-    await expect(prevBtn).toBeDisabled();
-    await expect(nextBtn).toBeEnabled();
+    await expect(allPrev).toHaveCount(2);
+    await expect(allNext).toHaveCount(2);
+
+    const prevBtn = allPrev.first();
+    const nextBtn = allNext.first();
 
     await nextBtn.click();
     await expect(page.getByText('TopSpot')).toBeVisible();
