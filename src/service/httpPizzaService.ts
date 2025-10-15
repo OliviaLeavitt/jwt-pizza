@@ -16,45 +16,61 @@ const pizzaServiceUrl = import.meta.env.VITE_PIZZA_SERVICE_URL;
 const pizzaFactoryUrl = import.meta.env.VITE_PIZZA_FACTORY_URL;
 
 class HttpPizzaService implements PizzaService {
-  async callEndpoint(
+  private async callEndpoint<T = any>(
     path: string,
-    method: string = "GET",
+    method = "GET",
     body?: any
-  ): Promise<any> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const options: any = {
-          method: method,
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        };
+  ): Promise<T> {
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const authToken = localStorage.getItem("token");
+      if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
 
-        const authToken = localStorage.getItem("token");
-        if (authToken) {
-          options.headers["Authorization"] = `Bearer ${authToken}`;
-        }
-
-        if (body) {
-          options.body = JSON.stringify(body);
-        }
-
-        if (!path.startsWith("http")) {
-          path = pizzaServiceUrl + path;
-        }
-
-        const r = await fetch(path, options);
-        const j = await r.json();
-        if (r.ok) {
-          resolve(j);
-        } else {
-          reject({ code: r.status, message: j.message });
-        }
-      } catch (e: any) {
-        reject({ code: 500, message: e.message });
+      if (!path.startsWith("http")) {
+        path = pizzaServiceUrl + path;
       }
+
+      const res = await fetch(path, {
+        method,
+        headers,
+        credentials: "include",
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      // Some endpoints (e.g., DELETE 204) return no body
+      if (res.status === 204) return {} as T;
+
+      const text = await res.text();
+      const json = text ? JSON.parse(text) : {};
+
+      if (!res.ok) {
+        const msg = (json && json.message) || `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+
+      return json as T;
+    } catch (e: any) {
+      throw new Error(e?.message ?? "Network error");
+    }
+  }
+
+  // ---- Users
+  async getUsers(pageZeroBased: number, limit: number, name: string) {
+    // API expects 1-based page index
+    const page = (pageZeroBased ?? 0) + 1;
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit ?? 10),
+      name: name || "*",
     });
+    return this.callEndpoint<{ users: User[]; more: boolean }>(
+      `/api/user?${params.toString()}`,
+      "GET"
+    );
+  }
+
+  async deleteUser(userId: number): Promise<void> {
+    await this.callEndpoint(`/api/user/${userId}`, "DELETE");
   }
 
   async updateUser(updatedUser: User): Promise<User> {
@@ -64,16 +80,17 @@ class HttpPizzaService implements PizzaService {
       updatedUser
     );
     localStorage.setItem("token", token);
-    return Promise.resolve(user);
+    return user;
   }
 
+  // ---- Auth
   async login(email: string, password: string): Promise<User> {
     const { user, token } = await this.callEndpoint("/api/auth", "PUT", {
       email,
       password,
     });
     localStorage.setItem("token", token);
-    return Promise.resolve(user);
+    return user;
   }
 
   async register(name: string, email: string, password: string): Promise<User> {
@@ -83,31 +100,30 @@ class HttpPizzaService implements PizzaService {
       password,
     });
     localStorage.setItem("token", token);
-    return Promise.resolve(user);
+    return user;
   }
 
   logout(): void {
-    this.callEndpoint("/api/auth", "DELETE");
+    this.callEndpoint("/api/auth", "DELETE").catch(() => {});
     localStorage.removeItem("token");
   }
 
   async getUser(): Promise<User | null> {
-    let result: User | null = null;
-    if (localStorage.getItem("token")) {
-      try {
-        result = await this.callEndpoint("/api/user/me");
-      } catch (e) {
-        localStorage.removeItem("token");
-      }
+    if (!localStorage.getItem("token")) return null;
+    try {
+      return await this.callEndpoint("/api/user/me");
+    } catch {
+      localStorage.removeItem("token");
+      return null;
     }
-    return Promise.resolve(result);
   }
 
+  // ---- Orders/Menu
   async getMenu(): Promise<Menu> {
     return this.callEndpoint("/api/order/menu");
   }
 
-  async getOrders(user: User): Promise<OrderHistory> {
+  async getOrders(_user: User): Promise<OrderHistory> {
     return this.callEndpoint("/api/order");
   }
 
@@ -121,6 +137,7 @@ class HttpPizzaService implements PizzaService {
     });
   }
 
+  // ---- Franchise
   async getFranchise(user: User): Promise<Franchise[]> {
     return this.callEndpoint(`/api/franchise/${user.id}`);
   }
@@ -130,9 +147,9 @@ class HttpPizzaService implements PizzaService {
   }
 
   async getFranchises(
-    page: number = 0,
-    limit: number = 10,
-    nameFilter: string = "*"
+    page = 0,
+    limit = 10,
+    nameFilter = "*"
   ): Promise<FranchiseList> {
     return this.callEndpoint(
       `/api/franchise?page=${page}&limit=${limit}&name=${nameFilter}`
@@ -140,7 +157,7 @@ class HttpPizzaService implements PizzaService {
   }
 
   async closeFranchise(franchise: Franchise): Promise<void> {
-    return this.callEndpoint(`/api/franchise/${franchise.id}`, "DELETE");
+    await this.callEndpoint(`/api/franchise/${franchise.id}`, "DELETE");
   }
 
   async createStore(franchise: Franchise, store: Store): Promise<Store> {
@@ -158,6 +175,7 @@ class HttpPizzaService implements PizzaService {
     );
   }
 
+  // ---- Docs
   async docs(docType: string): Promise<Endpoints> {
     if (docType === "factory") {
       return this.callEndpoint(pizzaFactoryUrl + `/api/docs`);
