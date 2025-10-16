@@ -619,4 +619,3 @@ test('Delivery shows details, verifies, then lets me order more', async ({ page 
   await page.getByRole('button', { name: /verify/i }).click();
   expect(verifyCalled).toBe(true);
 });
-

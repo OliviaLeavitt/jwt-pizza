@@ -54,20 +54,7 @@ class HttpPizzaService implements PizzaService {
     }
   }
 
-  // ---- Users
-  async getUsers(pageZeroBased: number, limit: number, name: string) {
-    // API expects 1-based page index
-    const page = (pageZeroBased ?? 0) + 1;
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: String(limit ?? 10),
-      name: name || "*",
-    });
-    return this.callEndpoint<{ users: User[]; more: boolean }>(
-      `/api/user?${params.toString()}`,
-      "GET"
-    );
-  }
+
 
   async deleteUser(userId: number): Promise<void> {
     await this.callEndpoint(`/api/user/${userId}`, "DELETE");
@@ -81,6 +68,10 @@ class HttpPizzaService implements PizzaService {
     );
     localStorage.setItem("token", token);
     return user;
+  }
+
+    async getUsers(): Promise<User[]> {
+    return this.callEndpoint<User[]>("/api/user");
   }
 
   // ---- Auth
