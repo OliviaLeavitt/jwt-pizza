@@ -342,8 +342,8 @@ test.describe('Admin Dashboard', () => {
     const allPrev = page.getByRole('button', { name: '«' });
     const allNext = page.getByRole('button', { name: '»' });
 
-    await expect(allPrev).toHaveCount(2);
-    await expect(allNext).toHaveCount(2);
+    await expect(allPrev).toHaveCount(1);
+    await expect(allNext).toHaveCount(1);
 
     const prevBtn = allPrev.first();
     const nextBtn = allNext.first();
