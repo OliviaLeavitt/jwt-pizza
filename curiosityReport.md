@@ -93,6 +93,8 @@ Learning about refresh tokens and rotation helped me understand how real authent
 
 ### References
 https://codesignal.com/learn/courses/jwt-security-attacks-defenses-1/lessons/refresh-tokens-and-secure-token-rotation
+
 https://www.descope.com/blog/post/refresh-token-rotation
+
 https://auth0.com/blog/refresh-tokens-what-are-they-and-when-to-use-them/
 
