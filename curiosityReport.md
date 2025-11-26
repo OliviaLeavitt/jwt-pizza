@@ -46,8 +46,8 @@ A refresh token is powerful. If someone steals it, they could continuously reque
 4. The user must use the new refresh token next time.
 Why is this safer?
 If a hacker steals a refresh token:
-- The real user uses the token first → gets a new one
-- The attacker tries to use the old one → server rejects it
+- The real user uses the token first > gets a new one
+- The attacker tries to use the old one > server rejects it
 - The attack fails
 This reduces the usefulness of stolen tokens.
 
