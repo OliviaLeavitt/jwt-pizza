@@ -51,3 +51,45 @@ If a hacker steals a refresh token:
 - The attack fails
 This reduces the usefulness of stolen tokens.
 
+### Refresh Token Reuse Detection
+There is also another helpful idea known as Reuse Detections
+This happens when: 
+- A refresh token was already used and rotated.
+- Someone tries to use that same (old) token again.
+This normally means:
+- the refresh token was stolen
+- or two devices tried to use the same token
+Identity providers like Auth0 and Descope handle this by:
+- blocking the reused token
+- sometimes blocking all tokens in the token family
+- requiring the user to log in again
+A replay attack is when someone steals a valid token and tries to use it again to act as the real user. Refresh token rotation helps stop this because once a refresh token is used, it becomes invalid, so a stolen copy no longer works.
+
+### Experiment: Building and Testing Refresh Token Rotation
+To see how refresh token rotation works in practice, I built a small Node.js project that includes login, a protected route, a refresh endpoint, and logout. The full code is here:
+https://github.com/OliviaLeavitt/refresh-token-rotation-demo
+
+To keep the project simple, I used a small in-memory map to store the user’s current refresh token ID. This let me test refresh token rotation without needing a database.
+
+**What I Tested:**
+
+1. Login – I received an access token and a refresh token.
+(screenshot here)
+2. Refresh – Using the refresh token gave me a new access token and a new refresh token, and the old refresh token became invalid.
+(screenshot here)
+3. Replay Attack – I tried using the old refresh token again and the server rejected it with an “invalid or reused refresh token” error.
+(screenshot here)
+4. Using the New Access Token – The new access token worked to access the protected route.
+(screenshot here)
+5. Logout – Logging out removed the valid refresh token, so refreshing again after logout failed.
+(screenshot here)
+
+**What I Learned**
+
+**This experiment helped me clearly see how:**
+- Refresh tokens keep users logged in without asking for passwords again
+- Rotation makes each refresh token single-use
+- Reusing an old refresh token is blocked (replay protection)
+- Logout actually invalidates the session on the server
+
+
