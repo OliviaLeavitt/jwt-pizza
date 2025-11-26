@@ -88,4 +88,11 @@ To keep the project simple, I used a small in-memory map to store the user’s c
 - Reusing an old refresh token is blocked (replay protection)
 - Logout actually invalidates the session on the server
 
+### Conclusion
+Learning about refresh tokens and rotation helped me understand how real authentication systems keep users logged in while staying secure. I saw why short-lived access tokens need support, how refresh tokens safely extend a session, and how rotation stops stolen tokens from being reused. Building a small project and testing replay attacks made the concepts much clearer. Overall, this was a useful deep dive into a real DevOps/QA security technique that modern identity providers rely on.
+
+### References
+https://codesignal.com/learn/courses/jwt-security-attacks-defenses-1/lessons/refresh-tokens-and-secure-token-rotation
+https://www.descope.com/blog/post/refresh-token-rotation
+https://auth0.com/blog/refresh-tokens-what-are-they-and-when-to-use-them/
 
