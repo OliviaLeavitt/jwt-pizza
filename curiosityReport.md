@@ -74,15 +74,11 @@ To keep the project simple, I used a small in-memory map to store the user’s c
 **What I Tested:**
 
 1. Login – I received an access token and a refresh token.
-(screenshot here)
 2. Refresh – Using the refresh token gave me a new access token and a new refresh token, and the old refresh token became invalid.
-(screenshot here)
 3. Replay Attack – I tried using the old refresh token again and the server rejected it with an “invalid or reused refresh token” error.
-(screenshot here)
 4. Using the New Access Token – The new access token worked to access the protected route.
-(screenshot here)
 5. Logout – Logging out removed the valid refresh token, so refreshing again after logout failed.
-(screenshot here)
+<img width="1920" height="1080" alt="Screenshot (190)" src="https://github.com/user-attachments/assets/05b90d96-3085-48c5-b039-9b6a77c70fe5" />
 
 **What I Learned**
 
